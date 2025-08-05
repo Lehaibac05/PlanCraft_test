@@ -16,12 +16,12 @@ pipeline {
             }
         } 
         
-        stage('Run') {
-            steps {
-                echo 'Run application' 
-                bat 'npm run dev'
-            }
-        }
+        // stage('Run') {
+        //     steps {
+        //         echo 'Run application' 
+        //         bat 'npm run dev'
+        //     }
+        // }
 
         stage('Build Docker Image') {
             steps {
