@@ -37,15 +37,15 @@ pipeline {
         //         bat 'npm test'
         //     }
         // }
-        
+
 
         stage('Deploy') {
-            steps {
-                echo 'Deploying application'
-                // Nếu muốn chạy container, thêm lệnh dưới:
-                bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
-                // bat 'npm start'
-            }
-        } 
+    steps {
+        echo 'Deploying application'
+        bat 'docker rm -f plancraft_container || exit 0'
+        bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
+    }
+}
+
     }
 }
