@@ -23,12 +23,12 @@ pipeline {
             }
         }
 
-        // stage('Build Docker Image') {
-        //     steps {
-        //         echo 'Building Docker image'
-        //         bat 'docker build -t plantcraft .'
-        //     }
-        // }
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image'
+                bat 'docker build -t plantcraft .'
+            }
+        }
     
         // stage('Test') {
         //     steps {
@@ -39,13 +39,13 @@ pipeline {
         // }
 
 
-        // stage('Deploy') {
-        //     steps {
-        //         echo 'Deploying application'
-        //         bat 'docker rm -f plancraft_container || exit 0'
-        //         bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
-        //     }
-        // }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application'
+                bat 'docker rm -f plancraft_container || exit 0'
+                bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
+            }
+        }
 
     }
 }
