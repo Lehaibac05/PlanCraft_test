@@ -1,38 +1,7 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE_NAME = "tagiahuy/plancraft"
-        DOCKERHUB_CREDENTIALS_ID = "12345" // ID của credentials đã cấu hình trong Jenkins
-        BUILD_VERSION_FILE = "build_version.txt"
-    }
-
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Read & Increment Build Version') {
-            steps {
-                script {
-                    if (!fileExists(BUILD_VERSION_FILE)) {
-                        writeFile file: BUILD_VERSION_FILE, text: '0'
-                    }
-
-                    def currentVersion = readFile(BUILD_VERSION_FILE).trim().toInteger()
-                    def nextVersion = currentVersion + 1
-
-                    writeFile file: BUILD_VERSION_FILE, text: nextVersion.toString()
-                    env.CUSTOM_BUILD_VERSION = nextVersion.toString()
-
-                    echo "🔢 Build version: ${env.CUSTOM_BUILD_VERSION}"
-                }
-            }
-        }
-
-
         stage('Clone') {
             steps {
                 echo 'Cloning source code'
@@ -45,18 +14,19 @@ pipeline {
                 echo 'Installing npm packages'
                 bat 'npm install'
             }
-        }
-
+        } 
+        
+        // stage('Run') {
+        //     steps {
+        //         echo 'Run application' 
+        //         bat 'npm run dev'
+        //     }
+        // }
+//asdfasd
         stage('Build Docker Image') {
             steps {
-                script {
-                    // sh 'newgrp docker'
-                    // echo 'Building Docker image'
-                    // sh 'docker build -t plancraft .'
-                    bat "docker build -t ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} ."
-                    bat "docker tag ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest"
-
-                }
+                echo 'Building Docker image'
+                bat 'docker build -t plantcraft .'
             }
         }
     
@@ -71,32 +41,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying application'
-                bat "docker rm -f \$(docker ps -aq) || true"
-
                 // Nếu muốn chạy container, thêm lệnh dưới:
-                bat "docker run -d -p 3000:3000 --name plancraft_${env.CUSTOM_BUILD_VERSION} plancraft"
+                bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
                 // bat 'npm start'
             }
         } 
-
-        stage('Login & Push Docker Image') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", usernameVariable: 'tagiahuy2605@gmail.com', passwordVariable: 'Huyta@2605')]) {
-                        // sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                        // sh "docker push ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}"
-                        // sh "docker push ${DOCKER_IMAGE_NAME}:latest"
-                        sh """
-                                echo \$Huyta@2605 | docker login -u \$tagiahuy2605@gmail.com --password-stdin
-                                docker push ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}
-                                docker push ${DOCKER_IMAGE_NAME}:latest
-                                echo "DOCKER_USER=\$tagiahuy2605@gmail.com"
-                        """
-
-                    }
-                }
-            }
-        }
-
     }
 }
