@@ -22,16 +22,14 @@ pipeline {
                     writeFile file: BUILD_VERSION_FILE, text: nextVersion.toString()
                     env.CUSTOM_BUILD_VERSION = nextVersion.toString()
 
-                    echo " Build version: ${env.CUSTOM_BUILD_VERSION}"
+                    echo "Build version: ${env.CUSTOM_BUILD_VERSION}"
                 }
             }
         }
 
-        
-
         stage('Build Docker Image') {
             steps {
-                echo " Building Docker image: ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}"
+                echo "Building Docker image: ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}"
                 bat """
                     docker build -t ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} .
                     docker tag ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
@@ -41,17 +39,19 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo " Deploying application"
-                bat '''
-                    CONTAINER_ID=$(docker ps -q --filter "publish=3000")
-                    if [ ! -z "$CONTAINER_ID" ]; then
-                        docker stop $CONTAINER_ID
-                        docker rm $CONTAINER_ID
-                    fi
-                '''
+                echo "Deploying application"
 
+                // Stop and remove any container on port 3000 (Windows batch version)
                 bat """
-                    docker rm -f plancraft || true
+                    FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=3000"') DO (
+                        docker stop %%i
+                        docker rm %%i
+                    )
+                """
+
+                // Run new container
+                bat """
+                    docker rm -f plancraft || REM container may not exist
                     docker run -d -p 3000:3000 --name plancraft ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}
                 """
             }
@@ -64,9 +64,10 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    echo " Logging in and pushing image to Docker Hub"
+                    echo "Logging in and pushing image to Docker Hub"
+
                     bat """
-                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                         docker push ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}
                         docker push ${DOCKER_IMAGE_NAME}:latest
                     """
@@ -77,7 +78,7 @@ pipeline {
 
     post {
         always {
-            echo " Logging out from Docker Hub"
+            echo "Logging out from Docker Hub"
             bat 'docker logout'
         }
     }
