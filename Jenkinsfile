@@ -42,12 +42,13 @@ pipeline {
                 echo "Deploying application"
 
                 // Stop and remove any container on port 3000 (Windows batch version)
-                bat """
-                    FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=3000"') DO (
-                        docker stop %%i
-                        docker rm %%i
-                    )
-                """
+                // bat """
+                //     FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=3000"') DO (
+                //         docker stop %%i
+                //         docker rm %%i
+                //     )
+                // """
+                '''
 
                 // Run new container
                 bat """
