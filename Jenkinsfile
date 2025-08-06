@@ -48,7 +48,6 @@ pipeline {
                 //         docker rm %%i
                 //     )
                 // """
-                '''
 
                 // Run new container
                 bat """
