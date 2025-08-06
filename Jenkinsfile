@@ -1,51 +1,84 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE_NAME = "lehaibac/plancraft"
+        DOCKERHUB_CREDENTIALS_ID = "123"
+        BUILD_VERSION_FILE = "build_version.txt"
+    }
+
     stages {
-        stage('Clone') {
+        stage('Checkout & Versioning') {
             steps {
-                echo 'Cloning source code'
-                git branch: 'main', url: 'https://github.com/Lehaibac05/PlanCraft_test.git'
+                script {
+                    checkout scm
+
+                    if (!fileExists(BUILD_VERSION_FILE)) {
+                        writeFile file: BUILD_VERSION_FILE, text: '0'
+                    }
+
+                    def currentVersion = readFile(BUILD_VERSION_FILE).trim().toInteger()
+                    def nextVersion = currentVersion + 1
+                    writeFile file: BUILD_VERSION_FILE, text: nextVersion.toString()
+                    env.CUSTOM_BUILD_VERSION = nextVersion.toString()
+
+                    echo " Build version: ${env.CUSTOM_BUILD_VERSION}"
+                }
             }
         }
 
-        stage('Install dependencies') {
-            steps {
-                echo 'Installing npm packages'
-                bat 'npm install'
-            }
-        } 
         
-        // stage('Run') {
-        //     steps {
-        //         echo 'Run application' 
-        //         bat 'npm run dev'
-        //     }
-        // }
 
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image'
-                bat 'docker build -t plantcraft .'
+                echo " Building Docker image: ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}"
+                bat """
+                    docker build -t ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} .
+                    docker tag ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION} ${DOCKER_IMAGE_NAME}:latest
+                """
             }
         }
-    
-        // stage('Test') {
-        //     steps {
-        //         echo 'Running tests'
-        //         // Nếu có test thì bỏ comment dòng dưới
-        //         bat 'npm test'
-        //     }
-        // }
-
 
         stage('Deploy') {
             steps {
-                echo 'Deploying application'
-                bat 'docker rm -f plancraft_container || exit 0'
-                bat 'docker run -d -p 3000:3000 --name plancraft_container -e DB_HOST=mysql -e DB_USER=public -e DB_PASSWORD=123456 -e DB_NAME=plancraft_db plantcraft'
+                echo " Deploying application"
+                bat '''
+                    CONTAINER_ID=$(docker ps -q --filter "publish=3000")
+                    if [ ! -z "$CONTAINER_ID" ]; then
+                        docker stop $CONTAINER_ID
+                        docker rm $CONTAINER_ID
+                    fi
+                '''
+
+                bat """
+                    docker rm -f plancraft || true
+                    docker run -d -p 3000:3000 --name plancraft ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}
+                """
             }
         }
 
+        stage('Login & Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    echo " Logging in and pushing image to Docker Hub"
+                    bat """
+                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                        docker push ${DOCKER_IMAGE_NAME}:${env.CUSTOM_BUILD_VERSION}
+                        docker push ${DOCKER_IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo " Logging out from Docker Hub"
+            bat 'docker logout'
+        }
     }
 }
